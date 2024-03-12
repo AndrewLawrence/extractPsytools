@@ -1,11 +1,10 @@
 Package: extractPsytools
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Functions to Parse Psytools Log Files
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
+Author: Andrew J. Lawrence
+Maintainer: Andrew J. Lawrence <lawrenceajl@gmail.com>
+Description: Reads log files into tidy tabular data, one row per questionnaire.
 License: CC BY 4.0
 Encoding: UTF-8
 LazyData: true
@@ -15,3 +14,8 @@ Suggests:
 Config/testthat/edition: 3
 Language: en-GB
 RoxygenNote: 7.2.3
+Imports: 
+    openxlsx,
+    purrr,
+    readr,
+    tidyr

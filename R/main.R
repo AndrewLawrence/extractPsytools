@@ -41,6 +41,9 @@ list_psytools_files <- function(folder_loc,
   input
 }
 
+#' @importFrom readr read_lines
+#' @importFrom purrr map
+#' @importFrom purrr `%>%`
 psytools_folder_getraw <- function(folder_loc,
                                    file_ext_regexp = ".csv.gz$") {
   # List all files in "raw" directory ending in .csv.gz:
@@ -57,8 +60,8 @@ psytools_folder_getraw <- function(folder_loc,
     pattern = ".csv.gz$",
     full.names = FALSE,
     recursive = FALSE
-  ) %>%
-    gsub(".csv.gz", "", .)
+  )
+  in_names <- gsub(".csv.gz", "", in_names)
 
   names(input) <- in_names
 
@@ -68,6 +71,9 @@ psytools_folder_getraw <- function(folder_loc,
   dat
 }
 
+#' @importFrom purrr walk2
+#' @importFrom tidyr separate
+#' @importFrom openxlsx write.xlsx
 psytools_convert_folder <- function(folder_loc,
                                     output_loc) {
   # List all files in "raw" directory ending in .csv.gz:
@@ -84,8 +90,8 @@ psytools_convert_folder <- function(folder_loc,
     pattern = ".csv.gz$",
     full.names = FALSE,
     recursive = FALSE
-  ) %>%
-    gsub(".csv.gz", "", .)
+  )
+  in_names <- gsub(".csv.gz", "", in_names)
 
   names(input) <- in_names
 
@@ -99,8 +105,12 @@ psytools_convert_folder <- function(folder_loc,
       #  The following IDs are excluded as they contain junk data:
       filter(!`User code` %in% c("EBTEST", "DEVELOPMENT")) %>%
       # potential BUGFIX (2024-03-04):
-      filter( !(`Trial result` == "skip_back" & Response %in% c("skip_back", "keybRefuse", "skip_q")) ) %>%
-      mutate(IDDATE = safe_idstamp_maker(`User code`, `Completed Timestamp`)) %>%
+      filter(!(
+        `Trial result` == "skip_back" &
+          Response %in% c("skip_back", "keybRefuse", "skip_q")
+      )) %>%
+      mutate(IDDATE = safe_idstamp_maker(`User code`,
+                                         `Completed Timestamp`)) %>%
       arrange(`User code`, `Completed Timestamp`)
   )
 
