@@ -19,14 +19,27 @@ list_psytools_files(
 (pasted with \code{regexp_filter_ext})}
 }
 \value{
-A named list of file paths. The names have directory paths and
-    extensions stripped (via \code{file_ext_regexp}).
+A named character vector of file paths.
+    The names have directory paths and extensions stripped
+    (the latter via \code{regexp_filter_ext}).
 }
 \description{
 List psytools files in a directory (folder_loc).
 Files can be filtered with two regular expressions which are pasted together
  one for extensions, one for the names.
  e.g. \code{`file_ext_regexp = "\\.csv\\.gz$"`} selects all files with
- a .csv.gz extension. For more information on regular expressions, see
+ a .csv.gz extension. For more information on regular expressions in R, see
  \code{\link[base]{regexp}}.
+}
+\examples{
+\dontrun{
+# example code
+# default - list all .csv.gz files:
+list_psytools_files("my_psytools_log_directory/")
+# list all .csv files:
+list_psytools_files("my_psytools_log_directory/", "\\\\.csv$")
+# list all .csv files with "STUDY_B" in the file name anywhere before the
+#   file extension:
+list_psytools_files("my_psytools_log_directory/", "\\\\.csv$", ".*STUDY_B.*")
+}
 }

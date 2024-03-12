@@ -17,7 +17,7 @@ safe_idstamp_maker <- function(x, y) {
 #' Files can be filtered with two regular expressions which are pasted together
 #'  one for extensions, one for the names.
 #'  e.g. \code{`file_ext_regexp = "\\.csv\\.gz$"`} selects all files with
-#'  a .csv.gz extension. For more information on regular expressions, see
+#'  a .csv.gz extension. For more information on regular expressions in R, see
 #'  \code{\link[base]{regexp}}.
 #'
 #' @param folder_loc "/path/to/folder/to/scan/"
@@ -25,9 +25,22 @@ safe_idstamp_maker <- function(x, y) {
 #' @param regexp_filter_name regular expression filter for file names
 #'     (pasted with \code{regexp_filter_ext})
 #'
-#' @returns A named list of file paths. The names have directory paths and
-#'     extensions stripped (via \code{file_ext_regexp}).
+#' @returns A named character vector of file paths.
+#'     The names have directory paths and extensions stripped
+#'     (the latter via \code{regexp_filter_ext}).
 #'
+#' @examples
+#' \dontrun{
+#' # example code
+#' # default - list all .csv.gz files:
+#' list_psytools_files("my_psytools_log_directory/")
+#' # list all .csv files:
+#' list_psytools_files("my_psytools_log_directory/", "\\.csv$")
+#' # list all .csv files with "STUDY_B" in the file name anywhere before the
+#' #   file extension:
+#' list_psytools_files("my_psytools_log_directory/", "\\.csv$", ".*STUDY_B.*")
+#' }
+#' @importFrom stats setNames
 #' @export
 list_psytools_files <- function(folder_loc,
                                 regexp_filter_ext = "\\.csv\\.gz$",
@@ -38,108 +51,87 @@ list_psytools_files <- function(folder_loc,
     full.names = TRUE,
     recursive = FALSE
   )
-  input
+  # Make names (no path, no extension):
+  nm <- basename(input)
+  nm <- gsub(regexp_filter_ext, "", nm)
+
+  setNames(input, nm)
 }
 
-#' @importFrom readr read_lines
-#' @importFrom purrr map
-#' @importFrom purrr `%>%`
-psytools_folder_getraw <- function(folder_loc,
-                                   file_ext_regexp = ".csv.gz$") {
-  # List all files in "raw" directory ending in .csv.gz:
-  input <- list.files(
-    folder_loc,
-    pattern = file_ext_regexp,
-    full.names = TRUE,
-    recursive = FALSE
+#' read_psytools_logs
+#'
+#' Reads in psytools log files to a list. Note: errors indicate the csv
+#'     format is not as expected. Try to check the raw files.
+#'
+#' @param filenames a named list of filepaths (e.g. output from
+#'     \code{\link{list_psytools_files}})
+#' @param format how to try to read the data? csv (default) = tabular,
+#'     txt = raw strings.
+#' @importFrom readr read_csv
+#' @importFrom readr cols_only col_character col_datetime col_double col_logical
+#' @export
+read_psytools_logs <- function(filenames, format = c("csv", "txt")) {
+
+  fmt <- readr::cols_only(
+    `User code` = readr::col_character(),
+    Iteration = readr::col_double(),
+    Language = readr::col_character(),
+    Completed = readr::col_logical(),
+    `Completed Timestamp` = readr::col_datetime(format = ""),
+    `Processed Timestamp` = readr::col_datetime(format = ""),
+    Block = readr::col_character(),
+    Trial = readr::col_character(),
+    `Trial result` = readr::col_character(),
+    Response = readr::col_character(),
+    `Response time [ms]` = readr::col_double()
   )
 
-  # Make tidy names for them:
-  in_names <- list.files(
-    folder_loc,
-    pattern = ".csv.gz$",
-    full.names = FALSE,
-    recursive = FALSE
-  )
-  in_names <- gsub(".csv.gz", "", in_names)
-
-  names(input) <- in_names
-
-  # Read in the csv files:
-  dat <- map(input,
-             ~ read_lines(.x))
-  dat
+  lapply(filenames,
+         readr::read_csv,
+         col_types = fmt,
+         show_col_types = FALSE)
 }
 
-#' @importFrom purrr walk2
-#' @importFrom tidyr separate
-#' @importFrom openxlsx write.xlsx
-psytools_convert_folder <- function(folder_loc,
-                                    output_loc) {
-  # List all files in "raw" directory ending in .csv.gz:
-  input <- list.files(
-    folder_loc,
-    pattern = ".csv.gz$",
-    full.names = TRUE,
-    recursive = FALSE
-  )
+#' process_psytools_logs
+#'
+#' Reshape log file into tabular data. Reading table column names from the
+#'     \code{Trial} column in the log, and associated values from the
+#'     last logged \code{Trial Result} under that \code{Trial}.
+#'
+#' @param x a list of imported psytools logs
+#'     (see: \code{\link{read_psytools_logs}}).
+#'
+#' @importFrom dplyr arrange mutate last
+#' @importFrom tidyr separate_wider_delim pivot_wider
+#' @export
+process_psytools_logs <- function(x) {
 
-  # Make tidy names for them:
-  in_names <- list.files(
-    folder_loc,
-    pattern = ".csv.gz$",
-    full.names = FALSE,
-    recursive = FALSE
-  )
-  in_names <- gsub(".csv.gz", "", in_names)
+  .preproc <- function(x) {
+    bad_rows <- which((x$`Trial result` == "skip_back") &
+                        (x$Response %in% c("skip_back",
+                                           "keybRefuse",
+                                           "skip_q")))
+    x <- x[-bad_rows, ]
+    x$IDDATE <- safe_idstamp_maker(x$`User code`,
+                                   x$`Completed Timestamp`)
+    x[order(x$`User code`, x$`Completed Timestamp`), ]
+  }
 
-  names(input) <- in_names
+  dat <- lapply(x, .preproc)
 
-  # Make output names:
-  out_names <- paste0(output_loc, in_names, ".xlsx")
+  .make_wide <- function(x) {
+    x <- pivot_wider(x,
+                     id_cols = c("IDDATE", "Iteration", "Completed"),
+                     values_fn = dplyr::last,
+                     names_from = "Trial",
+                     values_from = "Trial result")
+    x <- separate_wider_delim(x,
+                              cols = "IDDATE",
+                              names = c("UserCode", "CompletedTimestamp"),
+                              delim = "_")
+    x
+  }
 
-  # Read in the csv files:
-  dat <- map(
-    input,
-    ~ read_csv(.x) %>%
-      #  The following IDs are excluded as they contain junk data:
-      filter(!`User code` %in% c("EBTEST", "DEVELOPMENT")) %>%
-      # potential BUGFIX (2024-03-04):
-      filter(!(
-        `Trial result` == "skip_back" &
-          Response %in% c("skip_back", "keybRefuse", "skip_q")
-      )) %>%
-      mutate(IDDATE = safe_idstamp_maker(`User code`,
-                                         `Completed Timestamp`)) %>%
-      arrange(`User code`, `Completed Timestamp`)
-  )
-
-  # Pivot to one row (multiple variables) per acquisition:
-  res <- map(
-    dat,
-    ~ .x %>% pivot_wider(
-      id_cols = c(IDDATE, Iteration, `Completed`),
-      # NOTE: Comment next code line out to inspect
-      #       duplicated data. In development
-      #       it was always that case that repeated
-      #       data (nested within ID and Timestamp)
-      #       was valid in the last slot.
-      values_fn = last,
-      names_from = Trial,
-      values_from = `Trial result`
-    ) %>%
-      separate(
-        IDDATE,
-        into = c("UserCode", "CompletedTimestamp"),
-        sep = "_"
-      )
-  )
-
-  # Write out pivoted data as xlsx format:
-  walk2(res,
-        out_names,
-        ~ openxlsx::write.xlsx(.x, file = .y, overwrite = TRUE))
-
-  return(list(input = dat,
-              output = res))
+  res <- lapply(dat, .make_wide)
+  res
 }
