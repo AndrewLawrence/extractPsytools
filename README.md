@@ -27,6 +27,9 @@ This is a basic example which shows you how to solve a common problem:
 
 ``` r
 library(extractPsytools)
-## basic example code
+## Given a directory ("my_psytools_data") read all *.csv.gz files, convert 
+##  to tabular format and write out results in xlsx format:
+convert_psytools_folder("my_psytools_data/")
+
 ```
 
