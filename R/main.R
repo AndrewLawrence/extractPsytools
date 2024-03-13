@@ -170,6 +170,7 @@ process_psytools_logs <- function(x) {
 #'     or "none" to suppress output and simply return processed data.
 #' @importFrom writexl write_xlsx
 #' @importFrom readr write_csv
+#' @export
 convert_psytools_folder <- function(folder_location,
                                     output_location = folder_location,
                                     output_suffix = "_proc",
