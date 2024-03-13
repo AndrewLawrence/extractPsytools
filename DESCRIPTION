@@ -1,7 +1,7 @@
 Package: extractPsytools
 Type: Package
 Title: Functions to Parse Psytools Log Files
-Version: 0.1.0
+Version: 0.2.0
 Author: Andrew J. Lawrence
 Maintainer: Andrew J. Lawrence <lawrenceajl@gmail.com>
 Description: Reads log files into tidy tabular data, one row per questionnaire.
