@@ -5,18 +5,20 @@
 \title{list_psytools_files}
 \usage{
 list_psytools_files(
-  folder_loc,
+  folder_location,
   regexp_filter_ext = "\\\\.csv\\\\.gz$",
   regexp_filter_name = ".*"
 )
 }
 \arguments{
-\item{folder_loc}{"/path/to/folder/to/scan/"}
+\item{folder_location}{"/path/to/folder/to/scan/"}
 
-\item{regexp_filter_ext}{regular expression filter for file extensions.}
+\item{regexp_filter_ext}{regular expression filter for file extensions.
+The default selects all gzipped csv files.
+For unzipped csv use \code{"\\.csv$"}.}
 
 \item{regexp_filter_name}{regular expression filter for file names
-(pasted with \code{regexp_filter_ext})}
+(is pasted with \code{regexp_filter_ext})}
 }
 \value{
 A named character vector of file paths.
@@ -24,7 +26,7 @@ A named character vector of file paths.
     (the latter via \code{regexp_filter_ext}).
 }
 \description{
-List psytools files in a directory (folder_loc).
+List psytools files in a directory (folder_location).
 Files can be filtered with two regular expressions which are pasted together
  one for extensions, one for the names.
  e.g. \code{`file_ext_regexp = "\\.csv\\.gz$"`} selects all files with

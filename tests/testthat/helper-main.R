@@ -1,3 +1,4 @@
+# nolint start
 example_data <- function() {
   c("User code,Iteration,Language,Completed,Completed Timestamp,Processed Timestamp,Block,Trial,Trial result,Response,Response time [ms]",
     "subject1,1,en,t,2017-04-12 16:32:28.707,2017-04-12 16:32:29.787,,MaxVolume,UnSupported,,",
@@ -29,10 +30,11 @@ example_data <- function() {
     "subject2,1,en,t,2017-04-13 20:49:34.993,2017-04-13 20:49:37.36,B1_PB2_10,B1_PB2_10,4,continue,1741"
   )
 }
+# nolint end
 
 make_dummy_psytools_file <- function(fname, data = FALSE) {
   # in the current working directory will make a dummy psytools log file
-  if ( !data ) {
+  if (!data) {
     return(file.create(fname))
   }
   fl <- gzfile(fname, open = "wt", compression = 6)

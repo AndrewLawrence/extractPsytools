@@ -13,17 +13,19 @@ safe_idstamp_maker <- function(x, y) {
 
 #' list_psytools_files
 #'
-#' List psytools files in a directory (folder_loc).
+#' List psytools files in a directory (folder_location).
 #' Files can be filtered with two regular expressions which are pasted together
 #'  one for extensions, one for the names.
 #'  e.g. \code{`file_ext_regexp = "\\.csv\\.gz$"`} selects all files with
 #'  a .csv.gz extension. For more information on regular expressions in R, see
 #'  \code{\link[base]{regexp}}.
 #'
-#' @param folder_loc "/path/to/folder/to/scan/"
+#' @param folder_location "/path/to/folder/to/scan/"
 #' @param regexp_filter_ext regular expression filter for file extensions.
+#'     The default selects all gzipped csv files.
+#'     For unzipped csv use \code{"\\.csv$"}.
 #' @param regexp_filter_name regular expression filter for file names
-#'     (pasted with \code{regexp_filter_ext})
+#'     (is pasted with \code{regexp_filter_ext})
 #'
 #' @returns A named character vector of file paths.
 #'     The names have directory paths and extensions stripped
@@ -42,11 +44,11 @@ safe_idstamp_maker <- function(x, y) {
 #' }
 #' @importFrom stats setNames
 #' @export
-list_psytools_files <- function(folder_loc,
+list_psytools_files <- function(folder_location,
                                 regexp_filter_ext = "\\.csv\\.gz$",
                                 regexp_filter_name = ".*") {
   input <- list.files(
-    folder_loc,
+    folder_location,
     pattern = paste0(regexp_filter_name, regexp_filter_ext),
     full.names = TRUE,
     recursive = FALSE
@@ -60,17 +62,22 @@ list_psytools_files <- function(folder_loc,
 
 #' read_psytools_logs
 #'
-#' Reads in psytools log files to a list. Note: errors indicate the csv
-#'     format is not as expected. Try to check the raw files.
+#' Reads in data from a list of Psytools log file locations to a list.
 #'
-#' @param filenames a named list of filepaths (e.g. output from
+#' Errors indicate the format is not as expected for a psytools log. Check all
+#' files in the input list are actually Psytools logs.
+#'
+#' @param filenames a list of filepaths (e.g. output from
 #'     \code{\link{list_psytools_files}})
-#' @param format how to try to read the data? csv (default) = tabular,
-#'     txt = raw strings.
+#'
+#' @returns A list of \code{\link[tibble:tbl_df]{tibble}} objects,
+#'     one per input file. Convert these from log format to tables with
+#'     \code{\link{process_psytools_logs}}.
+#'
 #' @importFrom readr read_csv
 #' @importFrom readr cols_only col_character col_datetime col_double col_logical
 #' @export
-read_psytools_logs <- function(filenames, format = c("csv", "txt")) {
+read_psytools_logs <- function(filenames) {
 
   fmt <- readr::cols_only(
     `User code` = readr::col_character(),
@@ -94,12 +101,18 @@ read_psytools_logs <- function(filenames, format = c("csv", "txt")) {
 
 #' process_psytools_logs
 #'
-#' Reshape log file into tabular data. Reading table column names from the
-#'     \code{Trial} column in the log, and associated values from the
-#'     last logged \code{Trial Result} under that \code{Trial}.
+#' Reshape log file into tabular data. Column names are read from the contents
+#'     of the \code{Trial} column in the log. The associated values
+#'     for a given \code{Trial} are read from the last logged
+#'     \code{Trial Result}.
 #'
 #' @param x a list of imported psytools logs
 #'     (see: \code{\link{read_psytools_logs}}).
+#'
+#' @returns A list of \code{\link[tibble:tbl_df]{tibble}} objects,
+#'     one per input log file. Objects have been rotated from the input log
+#'     format, such that \code{Trial}s are columns and each row is a
+#'     single acquisition session.
 #'
 #' @importFrom dplyr arrange mutate last
 #' @importFrom tidyr separate_wider_delim pivot_wider
@@ -134,4 +147,67 @@ process_psytools_logs <- function(x) {
 
   res <- lapply(dat, .make_wide)
   res
+}
+
+#' convert_psytools_folder
+#'
+#' Read all psytools logfiles from a folder (\code{folder_location}),
+#'     rotate/format data (using \code{\link{process_psytools_logs}}) and
+#'     write out results in csv format to a folder specified by
+#'     \code{output_location} (default: input folder).
+#'
+#' @inheritParams list_psytools_files
+#' @inherit process_psytools_logs return
+#' @param output_location Where to place output files
+#'     (default: same directory as input).
+#' @param output_suffix Each output file will be named as the input, but
+#'     with \code{output_suffix} added.
+#'     E.g. the default (\code{"_proc"}) means that
+#'     \code{"input/data.csv.gz"} will become
+#'     \code{"output/data_proc.csv"}.
+#' @param output_format \code{"xlsx"}, \code{"csv"},
+#'     both (i.e. \code{c("xlsx", "csv")}),
+#'     or "none" to suppress output and simply return processed data.
+#' @importFrom writexl write_xlsx
+#' @importFrom readr write_csv
+convert_psytools_folder <- function(folder_location,
+                                    output_location = folder_location,
+                                    output_suffix = "_proc",
+                                    output_format = "xlsx",
+                                    regexp_filter_ext = "\\.csv\\.gz$",
+                                    regexp_filter_name = ".*") {
+
+  output_format <- match.arg(output_format,
+                             choices = c("xlsx", "csv", "none"),
+                             several.ok = TRUE)
+
+  # Check output directory:
+  if (! dir.exists(output_location)) {
+    stop("could not find output_location:", output_location)
+  }
+
+  fl <- list_psytools_files(folder_location = folder_location,
+                            regexp_filter_ext = regexp_filter_ext,
+                            regexp_filter_name = regexp_filter_name)
+  data <- read_psytools_logs(fl)
+  proc <- process_psytools_logs(data)
+
+  outnames <- paste0(output_location, names(fl), output_suffix)
+
+  # Write out if requested:
+  if ("xlsx" %in% output_format) {
+    for (i in seq.int(length(proc))) {
+      writexl::write_xlsx(x = proc[[i]],
+                          path = paste0(outnames[[i]], ".xlsx"))
+    }
+  }
+  if ("csv" %in% output_format) {
+    for (i in seq.int(length(proc))) {
+      readr::write_csv(x = proc[[i]],
+                       file = paste0(outnames[[i]], ".csv"))
+    }
+  }
+
+  # return the processed data:
+  proc
 }

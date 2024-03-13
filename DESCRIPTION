@@ -17,7 +17,6 @@ Language: en-GB
 RoxygenNote: 7.2.3
 Imports: 
     dplyr,
-    openxlsx,
-    purrr,
+    writexl,
     readr,
     tidyr

@@ -4,16 +4,21 @@
 \alias{read_psytools_logs}
 \title{read_psytools_logs}
 \usage{
-read_psytools_logs(filenames, format = c("csv", "txt"))
+read_psytools_logs(filenames)
 }
 \arguments{
-\item{filenames}{a named list of filepaths (e.g. output from
+\item{filenames}{a list of filepaths (e.g. output from
 \code{\link{list_psytools_files}})}
-
-\item{format}{how to try to read the data? csv (default) = tabular,
-txt = raw strings.}
+}
+\value{
+A list of \code{\link[tibble:tbl_df]{tibble}} objects,
+    one per input file. Convert these from log format to tables with
+    \code{\link{process_psytools_logs}}.
 }
 \description{
-Reads in psytools log files to a list. Note: errors indicate the csv
-    format is not as expected. Try to check the raw files.
+Reads in data from a list of Psytools log file locations to a list.
+}
+\details{
+Errors indicate the format is not as expected for a psytools log. Check all
+files in the input list are actually Psytools logs.
 }

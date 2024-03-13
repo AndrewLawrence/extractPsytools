@@ -10,8 +10,15 @@ process_psytools_logs(x)
 \item{x}{a list of imported psytools logs
 (see: \code{\link{read_psytools_logs}}).}
 }
+\value{
+A list of \code{\link[tibble:tbl_df]{tibble}} objects,
+    one per input log file. Objects have been rotated from the input log
+    format, such that \code{Trial}s are columns and each row is a
+    single acquisition session.
+}
 \description{
-Reshape log file into tabular data. Reading table column names from the
-    \code{Trial} column in the log, and associated values from the
-    last logged \code{Trial Result} under that \code{Trial}.
+Reshape log file into tabular data. Column names are read from the contents
+    of the \code{Trial} column in the log. The associated values
+    for a given \code{Trial} are read from the last logged
+    \code{Trial Result}.
 }

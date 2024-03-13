@@ -57,10 +57,62 @@ test_that(
     # The processed data doesn't include skip_backs:
     any_skip_back <- vapply(
       proc,
-      \(x) any(x[,seq(from = 7L, to = ncol(x))] == "skip_back"),
+      \(x) any(x[, seq(from = 7L, to = ncol(x))] == "skip_back"),
       FUN.VALUE = TRUE
     )
 
     expect_false(any(any_skip_back, na.rm = TRUE))
   }
 )
+
+
+test_that("writing files works:",
+          {
+            loc <- withr::local_tempdir()
+            withr::local_dir(loc)
+
+            dummy_file_names <- c("STUDY_FORM_A",
+                                  "STUDY_FORM_B",
+                                  "STUDY_FORM_C")
+
+            # setup a dummy directory:
+            make_dummy_psytools_files(dummy_file_names, data = TRUE)
+
+            # make output directories:
+            dir.create("csv_out")
+            dir.create("xlsx_out")
+            dir.create("both_out")
+
+            convert_psytools_folder(".", output_location = "csv_out/",
+                                    output_format = "csv")
+            convert_psytools_folder(".", output_location = "xlsx_out/",
+                                    output_format = "xlsx")
+            convert_psytools_folder(".",
+                                    output_location = "both_out/",
+                                    output_format = c("csv", "xlsx"))
+
+            expected_csv <- paste0(dummy_file_names, "_proc.csv")
+            expected_xlsx <- paste0(dummy_file_names, "_proc.xlsx")
+
+            expect_true(all(file.exists(paste0(
+              "csv_out/", expected_csv
+            ))))
+            expect_true(all(file.exists(paste0(
+              "xlsx_out/", expected_xlsx
+            ))))
+
+            expect_true(all(file.exists(paste0(
+              "both_out/", expected_csv
+            ))))
+            expect_true(all(file.exists(paste0(
+              "both_out/", expected_xlsx
+            ))))
+
+            expect_false(any(file.exists(paste0(
+              "csv_out", expected_xlsx
+            ))))
+            expect_false(any(file.exists(paste0(
+              "xlsx_out", expected_csv
+            ))))
+
+          })
