@@ -47,7 +47,7 @@ test_that(
     make_dummy_psytools_files(dummy_file_names, data = TRUE)
 
     data <- read_psytools_logs(list_psytools_files("."))
-    proc <- process_psytools_logs(data)
+    proc <- process_psytools_logs(data, include_skipbacks = FALSE)
 
     # we got all 6 files:
     expect_equal(length(data), 6L)
@@ -57,7 +57,7 @@ test_that(
     # The processed data doesn't include skip_backs:
     any_skip_back <- vapply(
       proc,
-      \(x) any(x[, seq(from = 7L, to = ncol(x))] == "skip_back"),
+      \(x) any(x[, -1:-6] == "skip_back", na.rm = TRUE),
       FUN.VALUE = TRUE
     )
 

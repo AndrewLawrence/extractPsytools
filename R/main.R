@@ -108,7 +108,8 @@ read_psytools_logs <- function(filenames) {
 #'
 #' @param x a list of imported psytools logs
 #'     (see: \code{\link{read_psytools_logs}}).
-#'
+#' @param include_skipbacks If TRUE, will simulate the behaviour of an old
+#'     (bugged) version of the script.
 #' @returns A list of \code{\link[tibble:tbl_df]{tibble}} objects,
 #'     one per input log file. Objects have been rotated from the input log
 #'     format, such that \code{Trial}s are columns and each row is a
@@ -117,14 +118,17 @@ read_psytools_logs <- function(filenames) {
 #' @importFrom dplyr arrange mutate last
 #' @importFrom tidyr separate_wider_delim pivot_wider
 #' @export
-process_psytools_logs <- function(x) {
+process_psytools_logs <- function(x,
+                                  include_skipbacks = FALSE) {
 
   .preproc <- function(x) {
     bad_rows <- which((x$`Trial result` == "skip_back") &
                         (x$Response %in% c("skip_back",
                                            "keybRefuse",
                                            "skip_q")))
-    x <- x[-bad_rows, ]
+
+    if (!include_skipbacks) x <- x[-bad_rows, ]
+
     x$IDDATE <- safe_idstamp_maker(x$`User code`,
                                    x$`Completed Timestamp`)
     x[order(x$`User code`, x$`Completed Timestamp`), ]

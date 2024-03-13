@@ -4,11 +4,14 @@
 \alias{process_psytools_logs}
 \title{process_psytools_logs}
 \usage{
-process_psytools_logs(x)
+process_psytools_logs(x, include_skipbacks = FALSE)
 }
 \arguments{
 \item{x}{a list of imported psytools logs
 (see: \code{\link{read_psytools_logs}}).}
+
+\item{include_skipbacks}{If TRUE, will simulate the behaviour of an old
+(bugged) version of the script.}
 }
 \value{
 A list of \code{\link[tibble:tbl_df]{tibble}} objects,
