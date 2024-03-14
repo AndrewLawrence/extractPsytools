@@ -79,11 +79,12 @@ test_that("writing files works:",
             make_dummy_psytools_files(dummy_file_names, data = TRUE)
 
             # make output directories:
+            #   don't create "xlsx_out" to test missing directory creation.
             dir.create("csv_out")
-            dir.create("xlsx_out")
             dir.create("both_out")
 
-            convert_psytools_folder(".", output_location = "csv_out/",
+            # Omit terminal "/" on directory to test path parsing:
+            convert_psytools_folder(".", output_location = "csv_out",
                                     output_format = "csv")
             convert_psytools_folder(".", output_location = "xlsx_out/",
                                     output_format = "xlsx")
@@ -109,10 +110,10 @@ test_that("writing files works:",
             ))))
 
             expect_false(any(file.exists(paste0(
-              "csv_out", expected_xlsx
+              "csv_out/", expected_xlsx
             ))))
             expect_false(any(file.exists(paste0(
-              "xlsx_out", expected_csv
+              "xlsx_out/", expected_csv
             ))))
 
           })

@@ -186,9 +186,11 @@ convert_psytools_folder <- function(folder_location,
                              choices = c("xlsx", "csv", "none"),
                              several.ok = TRUE)
 
+  output_location <- normalizePath(output_location, mustWork = FALSE)
+
   # Check output directory:
-  if (! dir.exists(output_location)) {
-    stop("could not find output_location:", output_location)
+  if (!dir.exists(output_location)) {
+    dir.create(output_location, recursive = TRUE)
   }
 
   fl <- list_psytools_files(folder_location = folder_location,
@@ -197,7 +199,8 @@ convert_psytools_folder <- function(folder_location,
   data <- read_psytools_logs(fl)
   proc <- process_psytools_logs(data)
 
-  outnames <- paste0(output_location, names(fl), output_suffix)
+  outnames <- file.path(output_location, paste0(names(fl), output_suffix)) |>
+    normalizePath(mustWork = FALSE)
 
   # Write out if requested:
   if ("xlsx" %in% output_format) {
