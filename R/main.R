@@ -158,7 +158,7 @@ process_psytools_logs <- function(x,
 #' Read all psytools logfiles from a folder (\code{folder_location}),
 #'     rotate/format data (using \code{\link{process_psytools_logs}}) and
 #'     write out results in csv format to a folder specified by
-#'     \code{output_location} (default: input folder).
+#'     \code{output_location} (default: the input folder).
 #'
 #' @inheritParams list_psytools_files
 #' @inherit process_psytools_logs return
@@ -218,4 +218,131 @@ convert_psytools_folder <- function(folder_location,
 
   # return the processed data:
   proc
+}
+
+
+#' skipback_bugreport_folder
+#'
+#' Read all psytools logfiles from a folder (\code{folder_location}),
+#'     for each write out an excel-file with data values that would have
+#'     been lost if processed with a previous (bugged) version of the
+#'     psytools processing scripts.
+#'
+#' This function was developed to help assess the impact of a retrospective
+#'     script problem identified in 2024. The problem pre-dates the script's
+#'     move to github/r-package.
+#'
+#' @inheritParams list_psytools_files
+#' @param output_location Where to place output files
+#'     (default: same directory as input).
+#' @param output_suffix Each output file will be named as the input, but
+#'     with \code{output_suffix} added.
+#'     E.g. the default (\code{"_skipbackbugreport"}) means that
+#'     \code{"input/data.csv.gz"} will become
+#'     \code{"output/data_skipbackbugreport.csv"}.
+#' @param output_format \code{"xlsx"}, \code{"csv"},
+#'     both (i.e. \code{c("xlsx", "csv")}),
+#'     or "none" to suppress output and simply return processed data.
+#' @param remove_ids a character vector of IDs to remove.
+#' @importFrom writexl write_xlsx
+#' @importFrom readr write_csv
+#' @export
+skipback_bugreport_folder <- function(folder_location,
+                                      output_location = folder_location,
+                                      output_suffix = "_skipbackbugreport",
+                                      output_format = "xlsx",
+                                      regexp_filter_ext = "\\.csv\\.gz$",
+                                      regexp_filter_name = ".*",
+                                      remove_ids = c("EBTEST")) {
+
+
+  output_format <- match.arg(output_format,
+                             choices = c("xlsx", "csv", "none"),
+                             several.ok = TRUE)
+
+  output_location <- normalizePath(output_location, mustWork = FALSE)
+
+  # Check output directory:
+  if (!dir.exists(output_location)) {
+    dir.create(output_location, recursive = TRUE)
+  }
+
+  fl <- list_psytools_files(folder_location = folder_location,
+                            regexp_filter_ext = regexp_filter_ext,
+                            regexp_filter_name = regexp_filter_name)
+  data <- read_psytools_logs(fl)
+  # process correctly:
+  proc1 <- process_psytools_logs(data)
+  # process with bug:
+  proc2 <- process_psytools_logs(data, include_skipbacks = TRUE)
+
+
+  # filter out non-relevant IDs and
+  #   align comparable columns in bugged file to non-bugged:
+  for (i in seq_along(proc2)) {
+    proc1[[i]] <- proc1[[i]][!(proc1[[i]]$UserCode %in% remove_ids), ]
+    proc2[[i]] <- proc2[[i]][!(proc2[[i]]$UserCode %in% remove_ids), ]
+    proc2[[i]] <- proc2[[i]][, colnames(proc1[[i]])]
+  }
+
+  .skipback_bugreport <- function(df1, df2) {
+    if (! any(df2 == "skip_back", na.rm = TRUE)) {
+      # if no skip-backs are present using the old processing method,
+      #   return empty object of the correct format:
+      return(data.frame(matrix(NA, nrow = 0, ncol = 8,
+                               dimnames = list(
+                                 NULL,
+                                 c("row", "col", "UserCode",
+                                   "CompletedTimestamp", "Iteration",
+                                   "Completed", "varname", "new")
+                               ))))
+    }
+
+    # otherwise identify problems:
+    sel <- which(df1 != df2, arr.ind = TRUE)
+    # Note: above does not identify as a problem where either df1 or df2 have NA
+    #       values. This is desired and happens implicity by using `which`
+    #       around the "!=" call.
+
+    # extract associated variable name and subject info:
+    varname <- colnames(df2)[sel[, 2]]
+    subs <- df1[sel[, 1], 1:4]
+
+    # extract new values:
+    new <- vapply(seq_len(nrow(sel)),
+                  \(i) as.character(df1[sel[i, 1], sel[i, 2]]),
+                  FUN.VALUE = "c")
+
+    # return:
+    rtn <- cbind(sel, subs, varname, new)
+    rtn[order(rtn$row), ]
+  }
+
+  # init output data:
+  bug_reports <- vector(mode = "list", length = length(proc1))
+  # populate output data:
+  for (i in seq_along(proc1)) {
+    bug_reports[[i]] <- .skipback_bugreport(df1 = proc1[[i]],
+                                            df2 = proc2[[i]])
+  }
+
+  outnames <- file.path(output_location, paste0(names(fl), output_suffix)) |>
+    normalizePath(mustWork = FALSE)
+
+  # Write out if requested:
+  if ("xlsx" %in% output_format) {
+    for (i in seq.int(length(bug_reports))) {
+      writexl::write_xlsx(x = bug_reports[[i]],
+                          path = paste0(outnames[[i]], ".xlsx"))
+    }
+  }
+  if ("csv" %in% output_format) {
+    for (i in seq.int(length(bug_reports))) {
+      readr::write_csv(x = bug_reports[[i]],
+                       file = paste0(outnames[[i]], ".csv"))
+    }
+  }
+
+  # return the processed data:
+  bug_reports
 }
