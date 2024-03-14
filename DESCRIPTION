@@ -5,7 +5,7 @@ Version: 0.2.0
 Author: Andrew J. Lawrence
 Maintainer: Andrew J. Lawrence <lawrenceajl@gmail.com>
 Description: Reads log files into tidy tabular data, one row per questionnaire.
-License: CC BY 4.0
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Suggests: 
